@@ -10,11 +10,6 @@ driver = '{ODBC Driver 18 for SQL Server}'
 
 table_name = "Tasks"
 
-#connectionString = f'DRIVER={{ODBC Driver 18 for SQL Server}};SERVER={server};DATABASE={database};UID={username};PWD={password};TrustServerCertificate=yes'
-#conn = pyodbc.connect(connectionString, autocommit=True)
-#cursor = conn.cursor()
-
-
 async def get_connection():
     conn = await aioodbc.connect(dsn=f'DRIVER={driver};SERVER={server};DATABASE={database};UID={username};PWD={password};TrustServerCertificate=yes')
     conn.autocommit = True
