@@ -1,6 +1,9 @@
 import pyodbc
 import aioodbc
+from typing import List
 
+import task
+from task import Task
 
 server = '127.0.0.1,1433'
 database = 'master'
@@ -27,32 +30,37 @@ async def create_database(database_name):
     finally:
         conn.close()
 
-async def fetch_task():
+async def create_task(task: Task) -> Task:
+    async with await get_connection() as conn:
+        cursor = await conn.cursor()
+        await cursor.execute(f'INSERT INTO {table_name} (id, name, status, term, description) VALUES (?, ?, ?, ?, ?)',
+                        (task.id, task.name, task.status, task.term, task.description))
+        await conn.commit()
+    return task
+
+async def fetch_task() -> List[Task]:
     async with await get_connection() as conn:
         cursor = await conn.cursor()
         await cursor.execute(f'SELECT * FROM {table_name}')
         tasks = await cursor.fetchall()
-    return tasks
+    return [Task(id=row[0], name=row[1], status=row[2], term=row[3], description=row[4]) for row in tasks]
 
-async def create_task(id, name, status, term, description):
-    async with await get_connection() as conn:
-        cursor = await conn.cursor()
-        await cursor.execute(f'INSERT INTO {table_name} (id, name, status, term, description) VALUES (?, ?, ?, ?, ?)',
-                        (id, name, status, term, description))
-        await conn.commit()
 
-async def update_task(id, name, status, term, description):
+
+async def update_task(task: Task):
     async with await get_connection() as conn:
         cursor = await conn.cursor()
         await cursor.execute(f'UPDATE {table_name} SET name = ?, status = ?, term = ?, description = ? WHERE id = ?',
-                       (name, status, term, description, id))
+                       (task.name, task.status, task.term, task.description, task.id))
         await cursor.commit()
+    return task
 
-async def delete_task(id):
+async def delete_task(task_id: int) -> Task:
     async with await get_connection() as conn:
         cursor = await conn.cursor()
-        await cursor.execute(f'DELETE FROM {table_name} WHERE id = ?', (id,))
+        await cursor.execute(f'DELETE FROM {table_name} WHERE id = ?', (task_id,))
         await cursor.commit()
+    return Task(id=task_id, name='', status='', term='', description='')
 
 
 # Create BD
