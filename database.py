@@ -1,6 +1,7 @@
 import pyodbc
 import aioodbc
 from typing import List
+from typing import Union
 
 import task
 from task import Task
@@ -13,13 +14,19 @@ driver = '{ODBC Driver 18 for SQL Server}'
 
 table_name = "Tasks"
 
-async def get_connection():
-    conn = await aioodbc.connect(dsn=f'DRIVER={driver};SERVER={server};DATABASE={database};UID={username};PWD={password};TrustServerCertificate=yes')
+async def get_connection() -> aioodbc.Connection:
+    conn = await aioodbc.connect(
+        dsn=f'DRIVER={driver};'
+            f'SERVER={server};'
+            f'DATABASE={database};'
+            f'UID={username};'
+            f'PWD={password};'
+            f'TrustServerCertificate=yes')
     conn.autocommit = True
     return conn
 
 
-async def create_database(database_name):
+async def create_database(database_name: str) -> None:
     conn = await get_connection()
     cursor = conn.cursor()
     try:
@@ -33,8 +40,13 @@ async def create_database(database_name):
 async def create_task(task: Task) -> Task:
     async with await get_connection() as conn:
         cursor = await conn.cursor()
-        await cursor.execute(f'INSERT INTO {table_name} (id, name, status, term, description) VALUES (?, ?, ?, ?, ?)',
-                        (task.id, task.name, task.status, task.term, task.description))
+        await cursor.execute(
+            f'INSERT INTO {table_name} (id, name, status, term, description) VALUES (?, ?, ?, ?, ?)',
+                        (task.id,
+                         task.name,
+                         task.status,
+                         task.term,
+                         task.description))
         await conn.commit()
     return task
 
@@ -43,22 +55,28 @@ async def fetch_task() -> List[Task]:
         cursor = await conn.cursor()
         await cursor.execute(f'SELECT * FROM {table_name}')
         tasks = await cursor.fetchall()
-    return [Task(id=row[0], name=row[1], status=row[2], term=row[3], description=row[4]) for row in tasks]
+    return [Task(id=row[0],
+                 name=row[1],
+                 status=row[2],
+                 term=row[3],
+                 description=row[4])
+            for row in tasks]
 
 
 
-async def update_task(task: Task):
+async def update_task(task_id: Union[int, str], task: Task) -> Task:
     async with await get_connection() as conn:
         cursor = await conn.cursor()
         await cursor.execute(f'UPDATE {table_name} SET name = ?, status = ?, term = ?, description = ? WHERE id = ?',
-                       (task.name, task.status, task.term, task.description, task.id))
+                       (task.name, task.status, task.term, task.description, task_id))
         await cursor.commit()
     return task
 
 async def delete_task(task_id: int) -> Task:
     async with await get_connection() as conn:
         cursor = await conn.cursor()
-        await cursor.execute(f'DELETE FROM {table_name} WHERE id = ?', (task_id,))
+        await cursor.execute(f'DELETE FROM {table_name} WHERE id = ?',
+                             (task_id,))
         await cursor.commit()
     return Task(id=task_id, name='', status='', term='', description='')
 
