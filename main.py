@@ -27,6 +27,9 @@ async def get_task(task_id: int) -> Task:
 
 @app.put("/task/{id}", response_model=Task)
 async def update_task_id(task_id: Union[int, str], task: Task) -> Task:
+    if task_id <= 0:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND,
+                            detail="Task ID must be greater than 0")
     try:
         update_rows = await update_task(task_id, task)
         if update_rows == 0:
@@ -39,7 +42,10 @@ async def update_task_id(task_id: Union[int, str], task: Task) -> Task:
                             detail=str(e))
 
 @app.delete("/task/{task_id}", response_model=Task)
-async def delete_task_id(task_id:int) -> Task:
+async def delete_task_id(task_id: int) -> Task:
+    if task_id <= 0:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND,
+                            detail="Task ID must be greater than 0")
     tasks = await fetch_task()
     for task in tasks:
         if task.id == task_id:
