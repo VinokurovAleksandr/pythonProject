@@ -1,0 +1,25 @@
+version: "3.3"
+
+services:
+  web:
+    build: ..
+    command: uvicorn main:app --reload --workers 1 --host 0.0.0.0 --post 8000
+    volumes:
+      - . /app
+    ports:
+      - 8002:8000
+  db:
+        build:
+          context: ..
+          dockerfile: Dockerfile
+        ports:
+          - "8000:8000"
+        environment:
+          - SERVER=127.0.0.1,1433
+          - DATABASE=master
+          - USERNAME=sa
+          - PASSWORD=P@s5w0rd
+          - DRIVER='{ODBC Driver 18 for SQL Server}'
+
+
+
