@@ -1,16 +1,20 @@
 import tracemalloc
 from typing import Union
+import asyncio
+import traceback
 
 from fastapi import FastAPI, HTTPException, status
 
-from database import fetch_task, create_task, update_task, delete_task
+from database import fetch_task, create_task, update_task, delete_task, create_database, create_table
 from task import Task
-
+from upsert_task import UpsertTask
 app = FastAPI()
 
-
+# async def main():
+#     await create_database("mydatabase")
+#     await create_table()
 @app.post("/task/", response_model=Task)
-async def add_task(task: Task) -> Task:
+async def add_task(task: UpsertTask) -> Task:
     '''
     Endpoint for adding a new task.
     :param: task: Task object to be added.
@@ -44,26 +48,27 @@ async def get_task(task_id: int) -> Task:
 
 
 @app.put("/task/{id}", response_model=Task)
-async def update_task_id(task_id: Union[int, str], task: Task) -> Task:
+async def update_task_id(id: int, task: UpsertTask) -> Task:
     '''
     Updating a task by its id.
-    :param task_id: id of the task.
+    :param id: id of the task.
     :param task: Task object to be updated.
     :return: The update task object by its id.
     :raise: If the task with the specified is not found or
             no change were made during the update
     '''
-    if task_id <= 0:
+    if id <= 0:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST,
                             detail="Task ID must be greater than 0")
     try:
-        update_rows = await update_task(task_id, task)
+        update_rows = await update_task(id, task)
         if update_rows == 0:
             raise HTTPException(
                 status_code=status.HTTP_404_NOT_FOUND,
                 detail="Not found or changes were made")
         return task
     except Exception as e:
+        print(traceback.print_exception(e))
         raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
                             detail=str(e))
 
@@ -83,10 +88,15 @@ async def delete_task_id(task_id: int) -> Task:
     tasks = await fetch_task()
     for task in tasks:
         if task.id == task_id:
-            await delete_task(task_id)
-            return task
+            deleted_task = await delete_task(task_id)
+            return deleted_task
     raise HTTPException(status_code=status.HTTP_404_NOT_FOUND,
                         detail="Task not found")
 
 
+
+# asyncio.run(main())
+
 tracemalloc.start()
+create_database("mydatabase")
+create_table()

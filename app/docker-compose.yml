@@ -6,12 +6,28 @@ services:
           context: .
           dockerfile: Dockerfile
         ports:
-          - "8000:8000"
+          - "8002:8000"
         environment:
           - SERVER=127.0.0.1,1433
           - DATABASE=master
           - USERNAME=sa
           - PASSWORD=P@s5w0rd
           - DRIVER='{ODBC Driver 18 for SQL Server}'
+        networks:
+          - app-network
+
+  db:
+    image: mcr.microsoft.com/mssql/server:2019-latest
+    container_name: sqlserver
+    environment:
+      SA_PASSWORD: "P@s5w0rd"
+      ACCEPT_EULA: "Y"
+    ports:
+      - "1433:1433"
+    networks:
+      - app-network
+networks:
+  app-network:
+    driver: bridge
 
 

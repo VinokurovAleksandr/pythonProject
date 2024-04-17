@@ -5,6 +5,8 @@ import aioodbc
 import pyodbc
 
 from task import Task
+from upsert_task import UpsertTask
+
 
 server = '127.0.0.1,1433'
 database = 'master'
@@ -26,24 +28,7 @@ async def get_connection() -> aioodbc.Connection:
     conn.autocommit = True
     return conn
 
-
-async def create_database(database_name: str) -> None:
-    '''
-    Creates the database
-    :param database_name: Name of the database
-    '''
-    conn = await get_connection()
-    cursor = conn.cursor()
-    try:
-        cursor.execute(f'CREATE DATABASE {database_name}')
-        print("Database created successfully")
-    except pyodbc.Error as e:
-        print(f"Error creating database: {e}")
-    finally:
-        conn.close()
-
-
-async def create_task(task: Task) -> Task:
+async def create_task(task: UpsertTask) -> Task:
     '''
     Create a task in the database
     :param task: The task object to be created
@@ -52,9 +37,8 @@ async def create_task(task: Task) -> Task:
     async with await get_connection() as conn:
         cursor = await conn.cursor()
         await cursor.execute(
-            f'INSERT INTO {table_name} (id, name, status, term, description) VALUES (?, ?, ?, ?, ?)',
-            (task.id,
-             task.name,
+            f'INSERT INTO {table_name} (name, status, term, description) VALUES (?, ?, ?, ?)',
+            (task.name,
              task.status,
              task.term,
              task.description))
@@ -79,7 +63,7 @@ async def fetch_task() -> List[Task]:
             for row in tasks]
 
 
-async def update_task(task_id: Union[int, str], task: Task) -> Task:
+async def update_task(task_id: Union[int, str], task: UpsertTask) -> Task:
     '''
     Update a task in the database
     :param task_id: Id of the task to be updated
@@ -94,7 +78,7 @@ async def update_task(task_id: Union[int, str], task: Task) -> Task:
     return task
 
 
-async def delete_task(task_id: int) -> Task:
+async def delete_task(task_id: int) -> int:
     '''
     Delete a task in the database
     :param task_id: Id of the task to be deleted
@@ -105,14 +89,51 @@ async def delete_task(task_id: int) -> Task:
         await cursor.execute(f'DELETE FROM {table_name} WHERE id = ?',
                              (task_id,))
         await cursor.commit()
-    return Task(id=task_id, name='', status='', term='', description='')
+    return task_id
 
-# Create BD
-# cursor.execute('CREATE DATABASE mydatabase')
-# print("Database created successfully")
+
+async def create_database(database_name: str):
+    '''
+    Creates the database
+    :param database_name: Name of the database
+    '''
+    try:
+        conn = await get_connection()
+        cursor = await conn.cursor()
+        await cursor.execute(f"IF NOT EXISTS(SELECT * FROM sys.databases WHERE name = '{database_name}')"
+                            "BEGIN"
+                             f"CREATE DATABASE {database_name}"
+                            "END")
+        print("Database created successfully")
+    except pyodbc.Error as e:
+        print(f"Error creating database: {e}")
+    finally:
+        if conn:
+            conn.close()
+
+async def create_table():
+    conn = await get_connection()
+    cursor = await conn.cursor()
+    await cursor.execute("IF NOT EXISTS (SELECT * FROM sysobjects WHERE name='Tasks' and xtype='U')"
+                    "BEGIN "
+                    "CREATE TABLE Tasks (ID int IDENTITY(1,1) PRIMARYKEY,"
+                   'Name VARCHAR(50) NOT NULL, '
+                   'Status VARCHAR(50), '
+                   'Term VARCHAR(50), '
+                   'Description VARCHAR(255))'
+                    "END")
+    cursor.commit()
+    print("Table created successfully")
+
+
+
+ #Create BD
+ #cursor.execute('CREATE DATABASE mydatabase')
+ #print("Database created successfully")
 
 # Create TABLE
 
-# cursor.execute('CREATE TABLE Tasks ( ID INT PRIMARY KEY NOT NULL, Name VARCHAR(50) NOT NULL, Status VARCHAR(50), Term VARCHAR(50), Description VARCHAR(255))')
-# cursor.commit()
-# print("Table Created")
+ # cursor.execute('CREATE TABLE Tasks ( ID INT PRIMARY KEY NOT NULL, Name VARCHAR(50) NOT NULL, Status VARCHAR(50), Term VARCHAR(50), Description VARCHAR(255))')
+ # cursor.commit()
+ # print("Table Created")
+
