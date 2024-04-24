@@ -1,9 +1,10 @@
-from typing import List
+from typing import List, Tuple
 from typing import Union
 
 import aioodbc
 import pyodbc
 
+# from app.upsert_task import UpsertTask
 from task import Task
 from upsert_task import UpsertTask
 
@@ -36,14 +37,34 @@ async def create_task(task: UpsertTask) -> Task:
     '''
     async with await get_connection() as conn:
         cursor = await conn.cursor()
+
+        await cursor.execute(
+            f"IF NOT EXISTS "
+            f"(SELECT * FROM INFORMATION_SCHEMA.COLUMNS WHERE TABLE_NAME = "
+            f"'{table_name}' AND COLUMN_NAME = 'id') "
+            "BEGIN "
+            f"ALTER TABLE {table_name} ADD id INT IDENTITY(1,1) PRIMARY KEY "
+            "END"
+        )
+
         await cursor.execute(
             f'INSERT INTO {table_name} (name, status, term, description) VALUES (?, ?, ?, ?)',
             (task.name,
              task.status,
              task.term,
              task.description))
+
         await conn.commit()
-    return task
+
+        await cursor.execute(
+            f"SELECT @@IDENTITY"
+        )
+
+        row = await cursor.fetchone()
+        task_id = row[0] if row else None
+
+    created_task = Task(id=task_id, **task.dict())
+    return created_task
 
 
 async def fetch_task() -> List[Task]:
@@ -63,7 +84,7 @@ async def fetch_task() -> List[Task]:
             for row in tasks]
 
 
-async def update_task(task_id: Union[int, str], task: UpsertTask) -> Task:
+async def update_task(task_id: int, task: UpsertTask) -> Tuple[UpsertTask, int]:
     '''
     Update a task in the database
     :param task_id: Id of the task to be updated
@@ -72,11 +93,15 @@ async def update_task(task_id: Union[int, str], task: UpsertTask) -> Task:
     '''
     async with await get_connection() as conn:
         cursor = await conn.cursor()
-        await cursor.execute(f'UPDATE {table_name} SET name = ?, status = ?, term = ?, description = ? WHERE id = ?',
-                             (task.name, task.status, task.term, task.description, task_id))
+        await cursor.execute(
+            f'UPDATE {table_name} SET name = ?, status = ?, term = ?, description = ? WHERE id = ?',
+                             (task.name,
+                              task.status,
+                              task.term,
+                              task.description,
+                              task_id))
         await cursor.commit()
-    return task
-
+    return task, task_id
 
 async def delete_task(task_id: int) -> int:
     '''
@@ -115,16 +140,25 @@ async def create_table():
     conn = await get_connection()
     cursor = await conn.cursor()
     await cursor.execute("IF NOT EXISTS (SELECT * FROM sysobjects WHERE name='Tasks' and xtype='U')"
-                    "BEGIN "
-                    "CREATE TABLE Tasks (ID int IDENTITY(1,1) PRIMARYKEY,"
-                   'Name VARCHAR(50) NOT NULL, '
-                   'Status VARCHAR(50), '
-                   'Term VARCHAR(50), '
-                   'Description VARCHAR(255))'
-                    "END")
+                         "BEGIN "
+                         "CREATE TABLE Tasks (ID int IDENTITY(1,1) PRIMARY KEY, "
+                         "Name VARCHAR(50) NOT NULL, "
+                         "Status VARCHAR(50), "
+                         "Term VARCHAR(50), "
+                         "Description VARCHAR(255))"
+                         "END")
     cursor.commit()
     print("Table created successfully")
 
+async def drop_table():
+    '''
+    Drop the Tasks table from the database
+    '''
+    async with await get_connection() as conn:
+        cursor = await conn.cursor()
+        await cursor.execute("DROP TABLE Tasks")
+        await conn.commit()
+        print("Table 'Tasks' dropped successfully")
 
 
  #Create BD

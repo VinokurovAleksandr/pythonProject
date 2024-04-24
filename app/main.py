@@ -5,9 +5,12 @@ import traceback
 
 from fastapi import FastAPI, HTTPException, status
 
-from database import fetch_task, create_task, update_task, delete_task, create_database, create_table
+from database import (fetch_task, create_task, update_task, delete_task, create_database, create_table, drop_table)
 from task import Task
 from upsert_task import UpsertTask
+
+
+
 app = FastAPI()
 
 # async def main():
@@ -22,8 +25,8 @@ async def add_task(task: UpsertTask) -> Task:
     :raise:  If an error occurs while creating the task.
     '''
     try:
-        await create_task(task)
-        return task
+        created_task = await create_task(task)
+        return created_task
     except Exception as e:
         raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
                             detail=str(e))
@@ -68,7 +71,6 @@ async def update_task_id(id: int, task: UpsertTask) -> Task:
                 detail="Not found or changes were made")
         return task
     except Exception as e:
-        print(traceback.print_exception(e))
         raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
                             detail=str(e))
 
@@ -95,8 +97,13 @@ async def delete_task_id(task_id: int) -> Task:
 
 
 
-# asyncio.run(main())
+#
 
 tracemalloc.start()
-create_database("mydatabase")
-create_table()
+async def main():
+    await create_database("mydatabase")
+    await create_table()
+    # await drop_table()
+
+# asyncio.run(main())
+
