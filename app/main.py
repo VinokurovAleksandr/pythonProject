@@ -1,5 +1,5 @@
 import tracemalloc
-from typing import Union
+# from typing import Union
 import asyncio
 import traceback
 
@@ -64,12 +64,12 @@ async def update_task_id(id: int, task: UpsertTask) -> Task:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST,
                             detail="Task ID must be greater than 0")
     try:
-        update_rows = await update_task(id, task)
-        if update_rows == 0:
+        updated_task, task_id = await update_task(id, task)
+        if updated_task is None:
             raise HTTPException(
                 status_code=status.HTTP_404_NOT_FOUND,
                 detail="Not found or changes were made")
-        return task
+        return Task(id=task_id, **updated_task.dict())
     except Exception as e:
         raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
                             detail=str(e))
@@ -90,19 +90,18 @@ async def delete_task_id(task_id: int) -> Task:
     tasks = await fetch_task()
     for task in tasks:
         if task.id == task_id:
-            deleted_task = await delete_task(task_id)
-            return deleted_task
+            await delete_task(task_id)
+            return task
     raise HTTPException(status_code=status.HTTP_404_NOT_FOUND,
                         detail="Task not found")
 
 
 
-#
 
 tracemalloc.start()
-async def main():
-    await create_database("mydatabase")
-    await create_table()
+# async def main():
+    # await create_database("mydatabase")
+    # await create_table()
     # await drop_table()
 
 # asyncio.run(main())
