@@ -11,7 +11,7 @@ services:
           - SERVER=127.0.0.1,1433
           - DATABASE=master
           - USERNAME=sa
-          - PASSWORD=P@s5w0rd
+          - MSSQL_SA_PASSWORD=P@s5w0rd
           - DRIVER='{ODBC Driver 18 for SQL Server}'
         networks:
           - app-network

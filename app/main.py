@@ -14,8 +14,11 @@ from upsert_task import UpsertTask
 app = FastAPI()
 
 # async def main():
-#     await create_database("mydatabase")
-#     await create_table()
+    # await create_database("mydatabase")
+    # await create_table()
+
+# asyncio.run(main())
+
 @app.post("/task/", response_model=Task)
 async def add_task(task: UpsertTask) -> Task:
     '''
@@ -96,13 +99,13 @@ async def delete_task_id(task_id: int) -> Task:
                         detail="Task not found")
 
 
-
-
-tracemalloc.start()
 # async def main():
     # await create_database("mydatabase")
     # await create_table()
     # await drop_table()
 
 # asyncio.run(main())
+
+tracemalloc.start()
+
 
